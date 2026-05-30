@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhishGuard — Phishing URL Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #080c12;
+  --bg2:       rgba(13,20,32,0.82);
+  --bg3:       rgba(17,26,42,0.75);
+  --border:    #1c2d40;
+  --border2:   #24384f;
+  --cyan:      #00c8ff;
+  --green:     #00e57a;
+  --green-dim: rgba(0,51,34,0.6);
+  --amber:     #ffb020;
+  --amber-dim: rgba(42,24,0,0.6);
+  --red:       #ff3c3c;
+  --red-dim:   rgba(34,0,0,0.6);
+  --text:      #c8dae8;
+  --text-dim:  #4a6478;
+  --text-mid:  #7a9ab0;
+  --white:     #eef4f8;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'Plus Jakarta Sans', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── VIDEO BACKGROUND ── */
+.video-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.video-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.18;
+}
+
+.video-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(8,12,18,0.6) 0%, rgba(8,12,18,0.3) 50%, rgba(8,12,18,0.85) 100%),
+    linear-gradient(135deg, rgba(8,12,18,0.5) 0%, transparent 60%);
+}
+
+/* ── GRID OVERLAY ── */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ── LAYOUT ── */
+.shell {
+  position: relative;
+  z-index: 2;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 60px 24px 100px;
+}
+
+/* ── HEADER ── */
+.site-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 64px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { display: flex; flex-direction: column; gap: 6px; }
+
+.brand-name {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  color: var(--white);
+  line-height: 1;
+}
+
+.brand-name span { color: var(--cyan); }
+
+.brand-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(13,20,32,0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 6px 14px 6px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--green);
+  letter-spacing: 1.5px;
+}
+
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+  50% { opacity: 0.4; box-shadow: none; }
+}
+
+.version-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+
+/* ── SCANNER CARD ── */
+.scanner-card {
+  background: var(--bg2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+
+.scanner-card-top {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scanner-card-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.url-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.url-input-wrap { flex: 1; position: relative; }
+
+.url-prefix {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--text-dim);
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: 1px;
+}
+
+#urlInput {
+  width: 100%;
+  padding: 15px 16px 15px 56px;
+  background: rgba(8,12,18,0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--white);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#urlInput::placeholder { color: var(--text-dim); font-weight: 300; }
+#urlInput:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(0,200,255,0.1);
+}
+
+.scan-btn {
+  padding: 15px 30px;
+  background: var(--cyan);
+  color: #050810;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.scan-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,200,255,0.35);
+}
+
+.scan-btn:active { transform: translateY(0); }
+.scan-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.examples-row {
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.examples-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.ex-pill {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-mid);
+  background: rgba(8,12,18,0.5);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.ex-pill:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0,200,255,0.06);
+}
+
+/* ── SCANNING BAR ── */
+.scanning-bar {
+  display: none;
+  padding: 18px 32px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: 16px;
+}
+
+.scanning-bar.active { display: flex; }
+
+.scan-line-track {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.scan-line-fill {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  background-size: 200% 100%;
+  animation: sweep 1s ease-in-out infinite;
+}
+
+@keyframes sweep {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.scan-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--cyan);
+  letter-spacing: 2.5px;
+  flex-shrink: 0;
+}
+
+/* ── RESULTS ── */
+#resultsArea { display: none; }
+
+/* verdict strip */
+.verdict-strip {
+  border-radius: 14px;
+  border: 1px solid;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  overflow: hidden;
+  margin-bottom: 20px;
+  backdrop-filter: blur(16px);
+}
+
+.verdict-strip.safe   { border-color: var(--green); }
+.verdict-strip.warn   { border-color: var(--amber); }
+.verdict-strip.danger { border-color: var(--red);   }
+
+.verdict-left { padding: 28px 32px; }
+
+.verdict-strip.safe   .verdict-left { background: linear-gradient(135deg, var(--green-dim), var(--bg2)); }
+.verdict-strip.warn   .verdict-left { background: linear-gradient(135deg, var(--amber-dim), var(--bg2)); }
+.verdict-strip.danger .verdict-left { background: linear-gradient(135deg, var(--red-dim),   var(--bg2)); }
+
+.verdict-status-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.verdict-strip.safe   .verdict-status-label { color: var(--green); }
+.verdict-strip.warn   .verdict-status-label { color: var(--amber); }
+.verdict-strip.danger .verdict-status-label { color: var(--red);   }
+
+.verdict-title-text {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  line-height: 1.1;
+}
+
+.verdict-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-mid);
+  margin-top: 2px;
+}
+
+.verdict-right {
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-left: 1px solid;
+  min-width: 130px;
+}
+
+.verdict-strip.safe   .verdict-right { border-color: var(--green); background: rgba(0,229,122,0.06); }
+.verdict-strip.warn   .verdict-right { border-color: var(--amber); background: rgba(255,176,32,0.06); }
+.verdict-strip.danger .verdict-right { border-color: var(--red);   background: rgba(255,60,60,0.06);  }
+
+.score-big {
+  font-family: var(--mono);
+  font-size: 46px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.verdict-strip.safe   .score-big { color: var(--green); }
+.verdict-strip.warn   .score-big { color: var(--amber); }
+.verdict-strip.danger .score-big { color: var(--red);   }
+
+.score-denom {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+}
+
+/* risk meter */
+.risk-meter {
+  background: var(--bg2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 28px;
+  margin-bottom: 20px;
+}
+
+.risk-meter-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.risk-meter-label span:first-child {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.risk-meter-label span:last-child {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-mid);
+}
+
+.risk-track {
+  height: 5px;
+  background: rgba(8,12,18,0.7);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.risk-track-inner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 25fr 30fr 45fr;
+  gap: 2px;
+}
+
+.risk-zone { border-radius: 2px; opacity: 0.12; }
+.risk-zone.z-safe   { background: var(--green); }
+.risk-zone.z-warn   { background: var(--amber); }
+.risk-zone.z-danger { background: var(--red);   }
+
+.risk-fill-bar {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  border-radius: 6px;
+  transition: width 1s cubic-bezier(0.16,1,0.3,1);
+  width: 0%;
+}
+
+.risk-fill-bar.safe   { background: linear-gradient(90deg, var(--green), #00ff99); }
+.risk-fill-bar.warn   { background: linear-gradient(90deg, var(--amber), #ffd060); }
+.risk-fill-bar.danger { background: linear-gradient(90deg, var(--red),   #ff6666); }
+
+.risk-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.risk-tick {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+/* url breakdown */
+.url-breakdown {
+  background: var(--bg2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.url-breakdown-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.url-breakdown-header span {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.url-breakdown-body {
+  padding: 20px 24px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 2;
+  word-break: break-all;
+}
+
+.u-scheme  { color: var(--cyan); }
+.u-domain  { color: var(--white); font-size: 15px; font-weight: 500; }
+.u-sub     { color: var(--amber); }
+.u-path    { color: var(--text-mid); }
+.u-query   { color: #a88aff; }
+.u-bad     { color: var(--red); }
+
+.bd-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.bd-cell {
+  background: var(--bg2);
+  padding: 14px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bd-cell-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.bd-cell-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+/* checks panel */
+.checks-panel {
+  background: var(--bg2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.checks-panel-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checks-panel-header span {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.check-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-mid);
+}
+
+.checks-list { padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+
+.check-row {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.check-row:hover { border-color: var(--border2); }
+.check-row.pass { background: rgba(0,229,122,0.04); }
+.check-row.warn { background: rgba(255,176,32,0.04); }
+.check-row.fail { background: rgba(255,60,60,0.05); }
+
+.check-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  padding: 4px 0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.check-row.pass .check-badge { background: rgba(0,229,122,0.14); color: var(--green); }
+.check-row.warn .check-badge { background: rgba(255,176,32,0.14); color: var(--amber); }
+.check-row.fail .check-badge { background: rgba(255,60,60,0.14);  color: var(--red);   }
+
+.check-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+
+.check-detail {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--text-dim);
+  margin-top: 3px;
+  letter-spacing: 0.3px;
+}
+
+.check-pts {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.check-row.fail .check-pts { color: var(--red); }
+.check-row.warn .check-pts { color: var(--amber); }
+
+/* tip bar */
+.tip-bar {
+  margin-top: 20px;
+  background: var(--bg2);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 22px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.tip-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.tip-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-mid);
+  line-height: 1.6;
+}
+
+/* footer */
+.site-footer {
+  margin-top: 64px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-brand {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.footer-note {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 300;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in              { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.delay-1                 { animation-delay: 0.06s; }
+.delay-2                 { animation-delay: 0.12s; }
+.delay-3                 { animation-delay: 0.18s; }
+.delay-4                 { animation-delay: 0.24s; }
+
+/* responsive */
+@media (max-width: 620px) {
+  .site-header { flex-direction: column; gap: 20px; }
+  .header-meta { align-items: flex-start; }
+  .url-input-row { flex-direction: column; }
+  .verdict-strip { grid-template-columns: 1fr; }
+  .verdict-right { border-left: none; border-top: 1px solid; flex-direction: row; justify-content: flex-start; gap: 12px; min-width: auto; }
+  .bd-rows { grid-template-columns: 1fr; }
+  .check-row { grid-template-columns: 70px 1fr; }
+  .check-pts { display: none; }
+  .site-footer { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .brand-name { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+
+<!-- VIDEO BACKGROUND -->
+<div class="video-bg">
+  <video autoplay muted loop playsinline>
+    <source src="https://res.cloudinary.com/da76ww9ps/video/upload/v1780159913/hero-bg-ikK1LdWz_cghkxm.mp4" type="video/mp4">
+  </video>
+</div>
+
+<!-- GRID OVERLAY -->
+<div class="grid-overlay"></div>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-name">Phish<span>Guard</span></div>
+      <div class="brand-tag">Phishing URL Detection Engine</div>
+    </div>
+    <div class="header-meta">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        ENGINE ONLINE
+      </div>
+      <div class="version-tag">v2.0 &nbsp;·&nbsp; Code in Place 2026 &nbsp;·&nbsp; By Abdullah</div>
+    </div>
+  </header>
+
+  <!-- SCANNER -->
+  <div class="section-label">URL Scanner</div>
+
+  <div class="scanner-card">
+    <div class="scanner-card-top">
+      <div class="scanner-card-title">Target URL</div>
+      <div class="url-input-row">
+        <div class="url-input-wrap">
+          <span class="url-prefix">URL</span>
+          <input type="text" id="urlInput" placeholder="https://example.com/path?token=...">
+        </div>
+        <button class="scan-btn" onclick="runScan()" id="scanBtn">Scan</button>
+      </div>
+    </div>
+
+    <div class="examples-row">
+      <span class="examples-label">Try</span>
+      <button class="ex-pill" onclick="tryURL('https://www.google.com')">google.com</button>
+      <button class="ex-pill" onclick="tryURL('http://paypa1-secure.login.verify-account.tk/reset?token=abc123')">paypal spoof</button>
+      <button class="ex-pill" onclick="tryURL('http://amazon-security-alert.ml/verify?user=admin&suspended=true')">amazon fake</button>
+      <button class="ex-pill" onclick="tryURL('http://bit.ly/3xR9abc')">short URL</button>
+      <button class="ex-pill" onclick="tryURL('https://github.com/stanford/cip')">github.com</button>
+    </div>
+
+    <div class="scanning-bar" id="scanningBar">
+      <span class="scan-label">ANALYZING</span>
+      <div class="scan-line-track"><div class="scan-line-fill"></div></div>
+      <span class="scan-label" id="scanCounter">...</span>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="resultsArea">
+    <div id="verdictStrip" class="verdict-strip animate-in"></div>
+
+    <div class="risk-meter animate-in delay-1">
+      <div class="risk-meter-label">
+        <span>Risk Meter</span>
+        <span id="riskLabel">—</span>
+      </div>
+      <div class="risk-track">
+        <div class="risk-track-inner">
+          <div class="risk-zone z-safe"></div>
+          <div class="risk-zone z-warn"></div>
+          <div class="risk-zone z-danger"></div>
+        </div>
+        <div class="risk-fill-bar" id="riskFill"></div>
+      </div>
+      <div class="risk-ticks">
+        <span class="risk-tick" style="color:var(--green)">SAFE  0</span>
+        <span class="risk-tick">25</span>
+        <span class="risk-tick">55</span>
+        <span class="risk-tick" style="color:var(--red)">100  HIGH RISK</span>
+      </div>
+    </div>
+
+    <div class="url-breakdown animate-in delay-2">
+      <div class="url-breakdown-header">
+        <span>URL Structure</span>
+        <span id="urlLenLabel">—</span>
+      </div>
+      <div class="url-breakdown-body" id="urlBreakdownBody"></div>
+      <div class="bd-rows" id="bdRows"></div>
+    </div>
+
+    <div class="checks-panel animate-in delay-3">
+      <div class="checks-panel-header">
+        <span>Heuristic Checks</span>
+        <span class="check-count" id="checkCount">—</span>
+      </div>
+      <div class="checks-list" id="checksList"></div>
+    </div>
+
+    <div class="tip-bar animate-in delay-4">
+      <span class="tip-label">Tip</span>
+      <span class="tip-text" id="tipText"></span>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <span class="footer-brand">PhishGuard &nbsp;·&nbsp; By Abdullah &nbsp;·&nbsp; Stanford Code in Place 2026</span>
+    <span class="footer-note">Heuristic analysis only &nbsp;·&nbsp; No data sent externally</span>
+  </footer>
+
+</div>
+
+<script>
+const SUSPICIOUS_WORDS = ['login','verify','secure','account','update','confirm',
+  'banking','paypal','amazon','apple','microsoft','google','facebook','signin',
+  'password','reset','urgent','suspended','blocked','alert','click','free','prize',
+  'winner','limited','validate','authenticate','recover','unlock'];
+
+const FREE_TLDS   = ['.tk','.ml','.ga','.cf','.gq','.xyz','.top','.club','.online','.site','.info','.work','.buzz'];
+const SHORT_HOSTS = ['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','short.link','rebrand.ly','is.gd','buff.ly','rb.gy'];
+const TRUSTED     = ['google.com','github.com','microsoft.com','apple.com','amazon.com',
+  'facebook.com','twitter.com','linkedin.com','youtube.com','wikipedia.org',
+  'stackoverflow.com','reddit.com','dropbox.com','paypal.com'];
+
+const TIPS = [
+  'Phishers register domains like paypa1.com or paypal-secure.tk — always inspect the root domain carefully.',
+  'Free TLDs (.tk, .ml, .ga) are heavily abused in phishing campaigns due to zero registration cost.',
+  'Legitimate banks never ask for passwords or PINs through email links.',
+  'A URL shortener hides the real destination — treat shortened links from unknown sources with caution.',
+  'When in doubt, navigate directly to the website — do not click the link.',
+  'The @ symbol in a URL causes browsers to silently ignore everything before it — a classic redirect trick.',
+  'Brand names appearing in subdomains do not mean the site is legitimate.',
+  'HTTPS only encrypts traffic — it does not guarantee the site is safe or legitimate.',
+];
+
+function parseURL(raw) {
+  let url = raw.trim();
+  if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+  try {
+    const u = new URL(url);
+    return { scheme: u.protocol.replace(':',''), host: u.hostname.toLowerCase(),
+             path: u.pathname, query: u.search, full: url, ok: true };
+  } catch(e) { return { ok: false, full: raw }; }
+}
+
+function rootDomain(host) {
+  const p = host.split('.');
+  return p.length <= 2 ? host : p.slice(-2).join('.');
+}
+
+function subdomains(host) {
+  const p = host.split('.');
+  return p.length <= 2 ? '' : p.slice(0,-2).join('.');
+}
+
+function analyze(raw) {
+  const p = parseURL(raw);
+  if (!p.ok) return null;
+
+  const host = p.host, root = rootDomain(host), subs = subdomains(host);
+  const full = p.full.toLowerCase(), tld = '.' + host.split('.').pop();
+  const subN = subs ? subs.split('.').length : 0;
+
+  let score = 0;
+  const checks = [];
+  const add = (name, detail, status, pts) => { checks.push({ name, detail, status, pts }); score += pts; };
+
+  const isHTTPS = p.scheme === 'https', isShort = SHORT_HOSTS.includes(host);
+  const isFreeTLD = FREE_TLDS.includes(tld), isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  const isTrusted = TRUSTED.includes(root);
+  const suspMatches = SUSPICIOUS_WORDS.filter(w => full.includes(w));
+  const brandFake = TRUSTED.some(d => { const b = d.split('.')[0]; return subs.includes(b) && root !== d; });
+  const hasAt = p.full.includes('@'), hyphens = root.split('-').length - 1, urlLen = p.full.length;
+  const hexCount = (p.full.match(/%[0-9a-f]{2}/gi) || []).length;
+
+  add('Protocol',            isHTTPS ? 'Encrypted HTTPS connection' : 'Unencrypted HTTP — data exposed',          isHTTPS    ? 'pass':'fail', isHTTPS    ? 0:20);
+  add('IP as Hostname',      isIP    ? host+' — raw IP, no domain' : 'Domain name used: '+root,                  isIP       ? 'fail':'pass', isIP       ? 30:0);
+  add('URL Shortener',       isShort ? host+' — destination hidden': 'Not a known URL shortener',                isShort    ? 'fail':'pass', isShort    ? 25:0);
+  add('Domain TLD',          isFreeTLD ? tld+' — free/throwaway TLD': tld+' — standard TLD',                    isFreeTLD  ? 'fail':'pass', isFreeTLD  ? 30:0);
+
+  const subS = subN>2?'fail':subN===2?'warn':'pass', subP = subN>2?20:subN===2?5:0;
+  add('Subdomain Depth',     subN>2 ? subN+' levels — excessive' : subs||'none',                                 subS, subP);
+  add('Brand Impersonation', brandFake ? 'Trusted brand in subdomain':'No brand impersonation found',            brandFake  ? 'fail':'pass', brandFake  ? 35:0);
+
+  const swS = suspMatches.length>2?'fail':suspMatches.length>0?'warn':'pass';
+  const swP = suspMatches.length>2?15:suspMatches.length>0?5:0;
+  add('Suspicious Keywords', suspMatches.length ? suspMatches.slice(0,4).join(', '):'None found',                swS, swP);
+
+  const lS = urlLen>100?'fail':urlLen>75?'warn':'pass', lP = urlLen>100?10:urlLen>75?5:0;
+  add('URL Length',          urlLen+' chars — '+(urlLen>100?'very long':urlLen>75?'moderate':'normal'),          lS, lP);
+  add('@ Symbol',            hasAt ? 'Found — browser ignores everything before @':'Not present',                hasAt      ? 'fail':'pass', hasAt      ? 25:0);
+
+  const hS = hyphens>=3?'fail':hyphens>=1?'warn':'pass', hP = hyphens>=3?10:0;
+  add('Hyphens in Domain',   hyphens+' hyphen'+(hyphens!==1?'s':'')+' in root domain',                          hS, hP);
+
+  if (hexCount>3) add('Hex Encoding', hexCount+' encoded sequences — possible obfuscation', 'warn', 10);
+
+  if (isTrusted) score = Math.max(0, score - 20);
+  score = Math.min(score, 100);
+
+  return { p, host, root, subs, tld, checks, score, isTrusted };
+}
+
+function colorizeURL(p, res) {
+  let out = '';
+  out += `<span class="${p.scheme==='https'?'u-scheme':'u-bad'}">${p.scheme}://</span>`;
+  if (res.subs) out += `<span class="${res.subs.split('.').length>1?'u-bad':'u-sub'}">${res.subs}.</span>`;
+  out += `<span class="u-domain">${res.root}</span>`;
+  if (p.path && p.path !== '/') out += `<span class="u-path">${p.path}</span>`;
+  if (p.query) out += `<span class="u-query">${p.query}</span>`;
+  return out;
+}
+
+function getClass(s) { return s<25?'safe':s<55?'warn':'danger'; }
+
+function getVerdict(s) {
+  if (s<25) return { title:'Likely Safe',  sub:'No significant phishing indicators detected' };
+  if (s<55) return { title:'Suspicious',   sub:'Moderate risk — verify before visiting'     };
+  return          { title:'High Risk',    sub:'Strong phishing indicators — do not visit'  };
+}
+
+function renderResults(res) {
+  const { score, p, checks } = res;
+  const cls = getClass(score), { title, sub } = getVerdict(score);
+
+  const vs = document.getElementById('verdictStrip');
+  vs.className = 'verdict-strip animate-in ' + cls;
+  vs.innerHTML = `
+    <div class="verdict-left">
+      <div class="verdict-status-label">${cls==='safe'?'CLEAR':cls==='warn'?'CAUTION':'THREAT DETECTED'}</div>
+      <div class="verdict-title-text">${title}</div>
+      <div class="verdict-sub">${sub}</div>
+    </div>
+    <div class="verdict-right">
+      <div class="score-big">${score}</div>
+      <div class="score-denom">/ 100 RISK</div>
+    </div>`;
+
+  const rf = document.getElementById('riskFill');
+  rf.className = 'risk-fill-bar ' + cls;
+  document.getElementById('riskLabel').textContent = score + ' / 100';
+  setTimeout(() => rf.style.width = score + '%', 80);
+
+  document.getElementById('urlBreakdownBody').innerHTML = colorizeURL(p, res);
+  document.getElementById('urlLenLabel').textContent = p.full.length + ' chars';
+  document.getElementById('bdRows').innerHTML = `
+    <div class="bd-cell"><div class="bd-cell-label">Scheme</div><div class="bd-cell-val">${p.scheme.toUpperCase()}</div></div>
+    <div class="bd-cell"><div class="bd-cell-label">Root Domain</div><div class="bd-cell-val">${res.root}</div></div>
+    <div class="bd-cell"><div class="bd-cell-label">Subdomain</div><div class="bd-cell-val">${res.subs||'—'}</div></div>
+    <div class="bd-cell"><div class="bd-cell-label">TLD</div><div class="bd-cell-val">${res.tld}</div></div>`;
+
+  const passes = checks.filter(c=>c.status==='pass').length;
+  document.getElementById('checkCount').textContent = passes + ' / ' + checks.length + ' passed';
+  document.getElementById('checksList').innerHTML = checks.map(c=>`
+    <div class="check-row ${c.status}">
+      <div class="check-badge">${c.status.toUpperCase()}</div>
+      <div>
+        <div class="check-name">${c.name}</div>
+        <div class="check-detail">${c.detail}</div>
+      </div>
+      <div class="check-pts">${c.pts>0?'+'+c.pts:'—'}</div>
+    </div>`).join('');
+
+  document.getElementById('tipText').textContent = TIPS[Math.floor(Math.random()*TIPS.length)];
+
+  const ra = document.getElementById('resultsArea');
+  ra.style.display = 'block';
+  ra.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function runScan() {
+  const inp = document.getElementById('urlInput');
+  const raw = inp.value.trim();
+  if (!raw) { inp.focus(); return; }
+
+  const btn = document.getElementById('scanBtn');
+  const bar = document.getElementById('scanningBar');
+  const ra  = document.getElementById('resultsArea');
+
+  btn.disabled = true;
+  btn.textContent = 'Scanning...';
+  bar.classList.add('active');
+  ra.style.display = 'none';
+
+  let i = 0;
+  const steps = ['PROTOCOL','DOMAIN','TLD','SUBDOMAINS','KEYWORDS','LENGTH','SCORING'];
+  const ticker = setInterval(() => {
+    document.getElementById('scanCounter').textContent = steps[i++ % steps.length];
+  }, 130);
+
+  setTimeout(() => {
+    clearInterval(ticker);
+    bar.classList.remove('active');
+    btn.disabled = false;
+    btn.textContent = 'Scan';
+    const res = analyze(raw);
+    if (!res) {
+      inp.style.borderColor = 'var(--red)';
+      setTimeout(() => inp.style.borderColor = '', 1500);
+      return;
+    }
+    renderResults(res);
+  }, 900);
+}
+
+function tryURL(url) {
+  document.getElementById('urlInput').value = url;
+  runScan();
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runScan();
+});
+
+const inp = document.getElementById('urlInput');
+inp.addEventListener('focus', () => { inp.style.borderColor='var(--cyan)'; inp.style.boxShadow='0 0 0 3px rgba(0,200,255,0.1)'; });
+inp.addEventListener('blur',  () => { inp.style.borderColor='var(--border2)'; inp.style.boxShadow='none'; });
+</script>
+</body>
+</html>
